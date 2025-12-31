@@ -110,31 +110,29 @@ const TopographicBackground = () => {
 
     const simplex = new SimplexNoise(42);
 
-    // Smooth curve through points using Catmull-Rom spline
+    // Extra smooth curve using Catmull-Rom spline with higher tension for curvier lines
     const drawSmoothCurve = (points: { x: number; y: number }[], alpha: number) => {
-      if (points.length < 2) return;
+      if (points.length < 3) return;
       
       ctx.globalAlpha = alpha;
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
       
-      if (points.length === 2) {
-        ctx.lineTo(points[1].x, points[1].y);
-      } else {
-        for (let i = 0; i < points.length - 1; i++) {
-          const p0 = points[i === 0 ? i : i - 1];
-          const p1 = points[i];
-          const p2 = points[i + 1];
-          const p3 = points[i + 2 >= points.length ? i + 1 : i + 2];
-          
-          const tension = 0.4;
-          const cp1x = p1.x + (p2.x - p0.x) * tension / 3;
-          const cp1y = p1.y + (p2.y - p0.y) * tension / 3;
-          const cp2x = p2.x - (p3.x - p1.x) * tension / 3;
-          const cp2y = p2.y - (p3.y - p1.y) * tension / 3;
-          
-          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
-        }
+      // Higher tension for smoother, curvier lines like Lando site
+      const tension = 0.5;
+      
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[Math.max(0, i - 1)];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[Math.min(points.length - 1, i + 2)];
+        
+        const cp1x = p1.x + (p2.x - p0.x) * tension / 3;
+        const cp1y = p1.y + (p2.y - p0.y) * tension / 3;
+        const cp2x = p2.x - (p3.x - p1.x) * tension / 3;
+        const cp2y = p2.y - (p3.y - p1.y) * tension / 3;
+        
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
       }
       
       ctx.stroke();
@@ -147,21 +145,24 @@ const TopographicBackground = () => {
       
       const isDark = document.documentElement.classList.contains('dark');
       
-      // Clear with background
-      ctx.fillStyle = isDark ? '#0a0a0a' : '#fafafa';
+      // Clear with background - exact colors from user
+      ctx.fillStyle = isDark ? '#070707' : '#fcfcfa';
       ctx.fillRect(0, 0, width, height);
 
-      const scale = 0.001;
-      const levels = 8;
-      const cellSize = 10;
+      const scale = 0.0006; // Larger scale = bigger, more flowing shapes
+      const levels = 6; // Fewer levels for cleaner look
+      const cellSize = 8; // Smaller cells for smoother curves
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
       const heightMap: number[][] = [];
 
-      // Flowing time offset creates the movement
-      const flowX = time * 0.15;
-      const flowY = time * 0.08;
+      // Slower, smoother flowing time offset (0.75x speed)
+      const flowX = time * 0.08;
+      const flowY = time * 0.05;
+      
+      // Gentle sine wave for organic breathing motion
+      const breathe = Math.sin(time * 0.15) * 0.2;
 
       for (let y = 0; y < rows; y++) {
         heightMap[y] = [];
@@ -169,39 +170,39 @@ const TopographicBackground = () => {
           const nx = x * cellSize * scale;
           const ny = y * cellSize * scale;
           
-          // Multiple octaves with flowing animation
+          // Multiple octaves with smooth flowing animation
           let value = 0;
           
-          // Main flow - moves diagonally like water current
+          // Main flow - smooth diagonal current
           value += simplex.noise(
-            nx + flowX,
+            nx + flowX + breathe,
             ny + flowY
           ) * 1.0;
           
-          // Secondary wave - moves opposite for organic feel
+          // Secondary wave - gentle counter-flow
           value += simplex.noise(
-            nx * 1.8 - flowX * 0.7,
-            ny * 1.8 + flowY * 0.5
-          ) * 0.4;
+            nx * 1.5 - flowX * 0.4,
+            ny * 1.5 + flowY * 0.3
+          ) * 0.35;
           
-          // Subtle ripple layer
+          // Very subtle undulation
           value += simplex.noise(
-            nx * 3 + Math.sin(time * 0.5) * 0.3,
-            ny * 3 + Math.cos(time * 0.4) * 0.3
-          ) * 0.15;
+            nx * 2.2 + Math.sin(time * 0.2) * 0.15,
+            ny * 2.2 + Math.cos(time * 0.18) * 0.15
+          ) * 0.12;
           
           heightMap[y][x] = value;
         }
       }
 
-      // Refined line style
-      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.13)';
-      ctx.lineWidth = 1.2;
+      // Refined line style - like Lando Norris site
+      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(180, 175, 165, 0.35)';
+      ctx.lineWidth = 1.5;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
       for (let level = 0; level < levels; level++) {
-        const threshold = -1.0 + (level / levels) * 2.0;
+        const threshold = -0.8 + (level / levels) * 1.6;
         const levelAlpha = 0.6 + (level % 2) * 0.4; // Vary alpha slightly
         
         const segments: { x: number; y: number }[][] = [];
@@ -326,7 +327,7 @@ const TopographicBackground = () => {
         }
       }
 
-      time += 0.012; // Smooth, visible movement
+      time += 0.008; // 0.75x slower for smoother, more elegant movement
       animationId = requestAnimationFrame(drawContours);
     };
 
