@@ -150,7 +150,7 @@ const TopographicBackground = () => {
       ctx.fillRect(0, 0, width, height);
 
       const scale = 0.0008; // Slightly smaller shapes for more contours
-      const levels = 14; // More levels for denser contour lines like reference
+      const levels = 9; // Fewer levels for more spacing between lines
       const cellSize = 6; // Smaller cells for smoother curves
 
       const cols = Math.ceil(width / cellSize) + 1;
