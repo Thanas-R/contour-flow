@@ -1,11 +1,22 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import TopographicBackground from '@/components/TopographicBackground';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="relative min-h-screen">
+      <TopographicBackground />
+      <ThemeToggle />
+      
+      {/* Content overlay */}
+      <div className="relative z-10 flex min-h-screen items-center justify-center">
+        <div className="text-center px-6">
+          <h1 className="text-5xl md:text-7xl font-light tracking-tight text-foreground mb-4 animate-fade-in">
+            Topographic
+          </h1>
+          <p className="text-lg md:text-xl text-muted-foreground font-light tracking-wide animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            Flowing contours in motion
+          </p>
+        </div>
       </div>
     </div>
   );
