@@ -96,6 +96,10 @@
     @apply border-border;
   }
 
+  html {
+    zoom: 0.8;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
   }
