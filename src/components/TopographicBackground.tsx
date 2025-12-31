@@ -196,7 +196,7 @@ const TopographicBackground = () => {
       }
 
       // Refined line style - like Lando Norris site
-      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(180, 175, 165, 0.35)';
+      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(180, 175, 165, 0.35)';
       ctx.lineWidth = 1.5;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
