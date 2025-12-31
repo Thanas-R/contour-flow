@@ -13,28 +13,32 @@ const TopographicBackground = () => {
     let animationId: number;
     let time = 0;
 
-    // Parameters you can tweak
-    const BASE_SCALE = 0.0016; // base noise frequency (higher -> smaller features)
-    const BASE_CELL_RATIO = 200; // lower -> more cells, finer detail
-    const LEVELS = 6;
+    // --- tweakable constants ---
+    const UI_SCALE = 0.93; // overall "zoom out" (93%) centered
+    const TIME_STEP = 0.02; // larger -> faster animation
+    // ---------------------------
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
 
-      // Use CSS size for layout and client size for drawing calculations
       const cssWidth = Math.max(1, window.innerWidth);
       const cssHeight = Math.max(1, window.innerHeight);
 
-      // Set backing store size for sharpness on HiDPI screens
       canvas.width = Math.round(cssWidth * dpr);
       canvas.height = Math.round(cssHeight * dpr);
       canvas.style.width = `${cssWidth}px`;
       canvas.style.height = `${cssHeight}px`;
 
-      // Reset any existing transforms and apply devicePixelRatio once — avoids cumulative scaling bug
+      // reset transform to avoid cumulative scaling
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Optional: set imageSmoothing for crisper lines
+      // apply centered UI scale (scale around viewport center)
+      // transforms are currently in CSS pixels because of the setTransform above
+      ctx.translate(cssWidth / 2, cssHeight / 2);
+      ctx.scale(UI_SCALE, UI_SCALE);
+      ctx.translate(-cssWidth / 2, -cssHeight / 2);
+
+      // optional crisp lines
       ctx.imageSmoothingEnabled = true;
     };
 
@@ -123,7 +127,6 @@ const TopographicBackground = () => {
 
     const simplex = new SimplexNoise(42);
 
-    // Catmull-Rom / Bezier smoothing (unchanged)
     const drawSmoothCurve = (points: { x: number; y: number }[], alpha: number) => {
       if (points.length < 3) return;
 
@@ -152,23 +155,17 @@ const TopographicBackground = () => {
     };
 
     const drawContours = () => {
-      // Use clientWidth/clientHeight so coordinates are in CSS pixels (we already applied dpr via setTransform)
-      const width = canvas.clientWidth;
-      const height = canvas.clientHeight;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
 
       const isDark = document.documentElement.classList.contains('dark');
 
-      // Clear background
       ctx.fillStyle = isDark ? '#070707' : '#fcfcfa';
       ctx.fillRect(0, 0, width, height);
 
-      // Responsive noise scale: scales inversely with viewport width so visual size stays consistent across zooms
-      const scale = BASE_SCALE * (1440 / Math.max(600, width));
-
-      // cellSize derived from viewport so density feels consistent across sizes
-      const cellSize = Math.max(5, Math.round(width / BASE_CELL_RATIO));
-
-      const levels = LEVELS;
+      const scale = 0.0006; // original
+      const levels = 6;
+      const cellSize = 8;
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
@@ -194,7 +191,7 @@ const TopographicBackground = () => {
       }
 
       ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(180, 175, 165, 0.35)';
-      ctx.lineWidth = 1.25;
+      ctx.lineWidth = 1.5;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
@@ -256,7 +253,6 @@ const TopographicBackground = () => {
           }
         }
 
-        // Reconnect segments into paths (unchanged logic)
         const paths: { x: number; y: number }[][] = [];
         const used = new Set<number>();
         const tolerance = cellSize * 0.6;
@@ -317,7 +313,7 @@ const TopographicBackground = () => {
         for (const path of paths) drawSmoothCurve(path, 0.6 + (level % 2) * 0.4);
       }
 
-      time += 0.008;
+      time += TIME_STEP; // faster than before
       animationId = requestAnimationFrame(drawContours);
     };
 
@@ -333,7 +329,12 @@ const TopographicBackground = () => {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 w-full h-full" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 w-full h-full"
+    />
+  );
 };
 
 export default TopographicBackground;
