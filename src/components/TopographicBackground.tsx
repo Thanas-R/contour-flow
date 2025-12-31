@@ -114,34 +114,18 @@ const TopographicBackground = () => {
     const drawSmoothCurve = (points: { x: number; y: number }[], alpha: number) => {
       if (points.length < 3) return;
       
-      // Apply smoothing pass to reduce jaggedness
-      const smoothPoints: { x: number; y: number }[] = [];
-      for (let i = 0; i < points.length; i++) {
-        if (i === 0 || i === points.length - 1) {
-          smoothPoints.push(points[i]);
-        } else {
-          const prev = points[i - 1];
-          const curr = points[i];
-          const next = points[i + 1];
-          smoothPoints.push({
-            x: (prev.x + curr.x * 2 + next.x) / 4,
-            y: (prev.y + curr.y * 2 + next.y) / 4
-          });
-        }
-      }
-      
       ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.moveTo(smoothPoints[0].x, smoothPoints[0].y);
+      ctx.moveTo(points[0].x, points[0].y);
       
-      // Higher tension for smoother, curvier lines
-      const tension = 0.6;
+      // Higher tension for smoother, curvier lines like Lando site
+      const tension = 0.5;
       
-      for (let i = 0; i < smoothPoints.length - 1; i++) {
-        const p0 = smoothPoints[Math.max(0, i - 1)];
-        const p1 = smoothPoints[i];
-        const p2 = smoothPoints[i + 1];
-        const p3 = smoothPoints[Math.min(smoothPoints.length - 1, i + 2)];
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[Math.max(0, i - 1)];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[Math.min(points.length - 1, i + 2)];
         
         const cp1x = p1.x + (p2.x - p0.x) * tension / 3;
         const cp1y = p1.y + (p2.y - p0.y) * tension / 3;
@@ -165,9 +149,9 @@ const TopographicBackground = () => {
       ctx.fillStyle = isDark ? '#070707' : '#fcfcfa';
       ctx.fillRect(0, 0, width, height);
 
-      const scale = 0.0005; // Larger, more flowing shapes
-      const levels = 7; // Fewer levels for more spacing like reference
-      const cellSize = 4; // Smaller cells for ultra-smooth curves
+      const scale = 0.0006; // Larger scale = bigger, more flowing shapes
+      const levels = 6; // Fewer levels for cleaner look
+      const cellSize = 8; // Smaller cells for smoother curves
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
@@ -211,15 +195,15 @@ const TopographicBackground = () => {
         }
       }
 
-      // Refined line style - thin and delicate like reference
-      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(200, 195, 185, 0.4)';
-      ctx.lineWidth = 1;
+      // Refined line style - like Lando Norris site
+      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(180, 175, 165, 0.35)';
+      ctx.lineWidth = 1.5;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
       for (let level = 0; level < levels; level++) {
-        const threshold = -0.6 + (level / levels) * 1.2; // Wider threshold range for more spacing
-        const levelAlpha = 0.7 + (level % 2) * 0.3;
+        const threshold = -0.8 + (level / levels) * 1.6;
+        const levelAlpha = 0.6 + (level % 2) * 0.4; // Vary alpha slightly
         
         const segments: { x: number; y: number }[][] = [];
         
