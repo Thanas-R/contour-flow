@@ -158,8 +158,8 @@ const TopographicBackground = () => {
       const heightMap: number[][] = [];
 
       // Slower, smoother flowing time offset (0.75x speed)
-      const flowX = time * 0.08;
-      const flowY = time * 0.05;
+      const flowX = time * 0.10;
+      const flowY = time * 0.07;
       
       // Gentle sine wave for organic breathing motion
       const breathe = Math.sin(time * 0.15) * 0.2;
@@ -327,7 +327,7 @@ const TopographicBackground = () => {
         }
       }
 
-      time += 0.008; // 0.75x slower for smoother, more elegant movement
+      time += 0.016; // 0.75x slower for smoother, more elegant movement
       animationId = requestAnimationFrame(drawContours);
     };
 
