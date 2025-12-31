@@ -28,20 +28,33 @@ const TopographicBackground = () => {
     // Simplex noise for organic patterns
     class SimplexNoise {
       private perm: number[] = [];
+      private gradP: { x: number; y: number }[] = [];
       
-      constructor(seed: number = Math.random() * 10000) {
+      constructor(seed: number = 42) {
+        const grad3 = [
+          { x: 1, y: 1 }, { x: -1, y: 1 }, { x: 1, y: -1 }, { x: -1, y: -1 },
+          { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }
+        ];
+        
         const p = [];
         for (let i = 0; i < 256; i++) {
-          p[i] = Math.floor(((seed * (i + 1) * 16807) % 2147483647) / 2147483647 * 256);
+          p[i] = i;
         }
-        for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255];
-      }
-
-      private grad(hash: number, x: number, y: number): number {
-        const h = hash & 7;
-        const u = h < 4 ? x : y;
-        const v = h < 4 ? y : x;
-        return ((h & 1) ? -u : u) + ((h & 2) ? -2 * v : 2 * v);
+        
+        // Shuffle with seed
+        let n = 256;
+        let s = seed;
+        while (n > 1) {
+          s = (s * 16807) % 2147483647;
+          const k = Math.floor((s / 2147483647) * n);
+          n--;
+          [p[n], p[k]] = [p[k], p[n]];
+        }
+        
+        for (let i = 0; i < 512; i++) {
+          this.perm[i] = p[i & 255];
+          this.gradP[i] = grad3[this.perm[i] % 8];
+        }
       }
 
       noise(x: number, y: number): number {
@@ -53,14 +66,11 @@ const TopographicBackground = () => {
         const j = Math.floor(y + s);
 
         const t = (i + j) * G2;
-        const X0 = i - t;
-        const Y0 = j - t;
-        const x0 = x - X0;
-        const y0 = y - Y0;
+        const x0 = x - (i - t);
+        const y0 = y - (j - t);
 
-        let i1: number, j1: number;
-        if (x0 > y0) { i1 = 1; j1 = 0; }
-        else { i1 = 0; j1 = 1; }
+        const i1 = x0 > y0 ? 1 : 0;
+        const j1 = x0 > y0 ? 0 : 1;
 
         const x1 = x0 - i1 + G2;
         const y1 = y0 - j1 + G2;
@@ -70,24 +80,28 @@ const TopographicBackground = () => {
         const ii = i & 255;
         const jj = j & 255;
 
+        const g0 = this.gradP[ii + this.perm[jj]];
+        const g1 = this.gradP[ii + i1 + this.perm[jj + j1]];
+        const g2 = this.gradP[ii + 1 + this.perm[jj + 1]];
+
         let n0 = 0, n1 = 0, n2 = 0;
 
         let t0 = 0.5 - x0 * x0 - y0 * y0;
         if (t0 >= 0) {
           t0 *= t0;
-          n0 = t0 * t0 * this.grad(this.perm[ii + this.perm[jj]], x0, y0);
+          n0 = t0 * t0 * (g0.x * x0 + g0.y * y0);
         }
 
         let t1 = 0.5 - x1 * x1 - y1 * y1;
         if (t1 >= 0) {
           t1 *= t1;
-          n1 = t1 * t1 * this.grad(this.perm[ii + i1 + this.perm[jj + j1]], x1, y1);
+          n1 = t1 * t1 * (g1.x * x1 + g1.y * y1);
         }
 
         let t2 = 0.5 - x2 * x2 - y2 * y2;
         if (t2 >= 0) {
           t2 *= t2;
-          n2 = t2 * t2 * this.grad(this.perm[ii + 1 + this.perm[jj + 1]], x2, y2);
+          n2 = t2 * t2 * (g2.x * x2 + g2.y * y2);
         }
 
         return 70 * (n0 + n1 + n2);
@@ -97,23 +111,23 @@ const TopographicBackground = () => {
     const simplex = new SimplexNoise(42);
 
     // Smooth curve through points using Catmull-Rom spline
-    const drawSmoothCurve = (points: { x: number; y: number }[]) => {
+    const drawSmoothCurve = (points: { x: number; y: number }[], alpha: number) => {
       if (points.length < 2) return;
       
+      ctx.globalAlpha = alpha;
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
       
       if (points.length === 2) {
         ctx.lineTo(points[1].x, points[1].y);
       } else {
-        // Catmull-Rom to Bezier conversion for smooth curves
         for (let i = 0; i < points.length - 1; i++) {
           const p0 = points[i === 0 ? i : i - 1];
           const p1 = points[i];
           const p2 = points[i + 1];
           const p3 = points[i + 2 >= points.length ? i + 1 : i + 2];
           
-          const tension = 0.5;
+          const tension = 0.4;
           const cp1x = p1.x + (p2.x - p0.x) * tension / 3;
           const cp1y = p1.y + (p2.y - p0.y) * tension / 3;
           const cp2x = p2.x - (p3.x - p1.x) * tension / 3;
@@ -124,6 +138,7 @@ const TopographicBackground = () => {
       }
       
       ctx.stroke();
+      ctx.globalAlpha = 1;
     };
 
     const drawContours = () => {
@@ -136,14 +151,17 @@ const TopographicBackground = () => {
       ctx.fillStyle = isDark ? '#0a0a0a' : '#fafafa';
       ctx.fillRect(0, 0, width, height);
 
-      // Much larger scale for flowing, spread out contours
-      const scale = 0.0012;
-      const levels = 6; // Fewer contour levels
-      const cellSize = 8; // Larger cells for smoother result
+      const scale = 0.001;
+      const levels = 8;
+      const cellSize = 10;
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
       const heightMap: number[][] = [];
+
+      // Flowing time offset creates the movement
+      const flowX = time * 0.15;
+      const flowY = time * 0.08;
 
       for (let y = 0; y < rows; y++) {
         heightMap[y] = [];
@@ -151,26 +169,41 @@ const TopographicBackground = () => {
           const nx = x * cellSize * scale;
           const ny = y * cellSize * scale;
           
-          // Smooth, flowing noise with gentle animation
+          // Multiple octaves with flowing animation
           let value = 0;
-          value += simplex.noise(nx + time * 0.008, ny + time * 0.006) * 1;
-          value += simplex.noise(nx * 1.5 + time * 0.004, ny * 1.5 - time * 0.005) * 0.5;
+          
+          // Main flow - moves diagonally like water current
+          value += simplex.noise(
+            nx + flowX,
+            ny + flowY
+          ) * 1.0;
+          
+          // Secondary wave - moves opposite for organic feel
+          value += simplex.noise(
+            nx * 1.8 - flowX * 0.7,
+            ny * 1.8 + flowY * 0.5
+          ) * 0.4;
+          
+          // Subtle ripple layer
+          value += simplex.noise(
+            nx * 3 + Math.sin(time * 0.5) * 0.3,
+            ny * 3 + Math.cos(time * 0.4) * 0.3
+          ) * 0.15;
           
           heightMap[y][x] = value;
         }
       }
 
-      // Very subtle, thin lines
-      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)';
-      ctx.lineWidth = 1;
+      // Refined line style
+      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.13)';
+      ctx.lineWidth = 1.2;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      // Extract and draw smooth contour lines
       for (let level = 0; level < levels; level++) {
-        const threshold = -1.2 + (level / levels) * 2.4;
+        const threshold = -1.0 + (level / levels) * 2.0;
+        const levelAlpha = 0.6 + (level % 2) * 0.4; // Vary alpha slightly
         
-        // Collect line segments
         const segments: { x: number; y: number }[][] = [];
         
         for (let y = 0; y < rows - 1; y++) {
@@ -228,17 +261,20 @@ const TopographicBackground = () => {
         // Connect segments into continuous paths
         const paths: { x: number; y: number }[][] = [];
         const used = new Set<number>();
-        const tolerance = cellSize * 0.5;
+        const tolerance = cellSize * 0.6;
 
-        const findNearestSegment = (point: { x: number; y: number }, excludeIdx: number): { idx: number; end: 'start' | 'end' } | null => {
+        const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => 
+          Math.hypot(a.x - b.x, a.y - b.y);
+
+        const findNearestSegment = (point: { x: number; y: number }): { idx: number; end: 'start' | 'end' } | null => {
           let nearest: { idx: number; end: 'start' | 'end'; dist: number } | null = null;
           
           for (let i = 0; i < segments.length; i++) {
-            if (used.has(i) || i === excludeIdx) continue;
+            if (used.has(i)) continue;
             
             const seg = segments[i];
-            const distStart = Math.hypot(seg[0].x - point.x, seg[0].y - point.y);
-            const distEnd = Math.hypot(seg[1].x - point.x, seg[1].y - point.y);
+            const distStart = dist(seg[0], point);
+            const distEnd = dist(seg[1], point);
             
             if (distStart < tolerance && (!nearest || distStart < nearest.dist)) {
               nearest = { idx: i, end: 'start', dist: distStart };
@@ -258,43 +294,39 @@ const TopographicBackground = () => {
           const path = [...segments[i]];
           
           // Extend forward
-          let next = findNearestSegment(path[path.length - 1], i);
-          while (next) {
+          let iterations = 0;
+          let next = findNearestSegment(path[path.length - 1]);
+          while (next && iterations < 500) {
             used.add(next.idx);
             const seg = segments[next.idx];
-            if (next.end === 'start') {
-              path.push(seg[1]);
-            } else {
-              path.push(seg[0]);
-            }
-            next = findNearestSegment(path[path.length - 1], next.idx);
+            path.push(next.end === 'start' ? seg[1] : seg[0]);
+            next = findNearestSegment(path[path.length - 1]);
+            iterations++;
           }
           
           // Extend backward
-          let prev = findNearestSegment(path[0], i);
-          while (prev) {
+          iterations = 0;
+          let prev = findNearestSegment(path[0]);
+          while (prev && iterations < 500) {
             used.add(prev.idx);
             const seg = segments[prev.idx];
-            if (prev.end === 'start') {
-              path.unshift(seg[1]);
-            } else {
-              path.unshift(seg[0]);
-            }
-            prev = findNearestSegment(path[0], prev.idx);
+            path.unshift(prev.end === 'start' ? seg[1] : seg[0]);
+            prev = findNearestSegment(path[0]);
+            iterations++;
           }
           
-          if (path.length >= 3) {
+          if (path.length >= 4) {
             paths.push(path);
           }
         }
 
-        // Draw smooth curves
+        // Draw smooth curves with slight alpha variation
         for (const path of paths) {
-          drawSmoothCurve(path);
+          drawSmoothCurve(path, levelAlpha);
         }
       }
 
-      time += 0.003; // Slow, gentle animation
+      time += 0.012; // Smooth, visible movement
       animationId = requestAnimationFrame(drawContours);
     };
 
