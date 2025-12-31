@@ -1,155 +1,254 @@
 import { useEffect, useRef } from 'react';
 
 const TopographicBackground = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    let mouseX = 0;
-    let mouseY = 0;
-    let currentX = 0;
-    let currentY = 0;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseX = (e.clientX / window.innerWidth - 0.5) * 20;
-      mouseY = (e.clientY / window.innerHeight - 0.5) * 20;
+    let animationId: number;
+    let time = 0;
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.scale(dpr, dpr);
     };
 
-    const animate = () => {
-      currentX += (mouseX - currentX) * 0.05;
-      currentY += (mouseY - currentY) * 0.05;
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Simplex noise implementation for organic patterns
+    class SimplexNoise {
+      private perm: number[] = [];
       
-      const layers = container.querySelectorAll('.topo-layer');
-      layers.forEach((layer, index) => {
-        const depth = (index + 1) * 0.3;
-        const element = layer as HTMLElement;
-        element.style.transform = `translate(${currentX * depth}px, ${currentY * depth}px)`;
-      });
+      constructor() {
+        const p = [];
+        for (let i = 0; i < 256; i++) p[i] = Math.floor(Math.random() * 256);
+        for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255];
+      }
+
+      private grad(hash: number, x: number, y: number): number {
+        const h = hash & 7;
+        const u = h < 4 ? x : y;
+        const v = h < 4 ? y : x;
+        return ((h & 1) ? -u : u) + ((h & 2) ? -2 * v : 2 * v);
+      }
+
+      noise(x: number, y: number): number {
+        const F2 = 0.5 * (Math.sqrt(3) - 1);
+        const G2 = (3 - Math.sqrt(3)) / 6;
+
+        const s = (x + y) * F2;
+        const i = Math.floor(x + s);
+        const j = Math.floor(y + s);
+
+        const t = (i + j) * G2;
+        const X0 = i - t;
+        const Y0 = j - t;
+        const x0 = x - X0;
+        const y0 = y - Y0;
+
+        let i1: number, j1: number;
+        if (x0 > y0) { i1 = 1; j1 = 0; }
+        else { i1 = 0; j1 = 1; }
+
+        const x1 = x0 - i1 + G2;
+        const y1 = y0 - j1 + G2;
+        const x2 = x0 - 1 + 2 * G2;
+        const y2 = y0 - 1 + 2 * G2;
+
+        const ii = i & 255;
+        const jj = j & 255;
+
+        let n0 = 0, n1 = 0, n2 = 0;
+
+        let t0 = 0.5 - x0 * x0 - y0 * y0;
+        if (t0 >= 0) {
+          t0 *= t0;
+          n0 = t0 * t0 * this.grad(this.perm[ii + this.perm[jj]], x0, y0);
+        }
+
+        let t1 = 0.5 - x1 * x1 - y1 * y1;
+        if (t1 >= 0) {
+          t1 *= t1;
+          n1 = t1 * t1 * this.grad(this.perm[ii + i1 + this.perm[jj + j1]], x1, y1);
+        }
+
+        let t2 = 0.5 - x2 * x2 - y2 * y2;
+        if (t2 >= 0) {
+          t2 *= t2;
+          n2 = t2 * t2 * this.grad(this.perm[ii + 1 + this.perm[jj + 1]], x2, y2);
+        }
+
+        return 70 * (n0 + n1 + n2);
+      }
+    }
+
+    const simplex = new SimplexNoise();
+
+    const drawContours = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
       
-      requestAnimationFrame(animate);
+      // Get computed styles for theme colors
+      const computedStyle = getComputedStyle(document.documentElement);
+      const isDark = document.documentElement.classList.contains('dark');
+      
+      // Clear with background
+      ctx.fillStyle = isDark ? '#0a0a0a' : '#fafafa';
+      ctx.fillRect(0, 0, width, height);
+
+      // Contour settings
+      const scale = 0.003;
+      const levels = 15;
+      const cellSize = 4;
+
+      // Create height map with animation
+      const cols = Math.ceil(width / cellSize) + 1;
+      const rows = Math.ceil(height / cellSize) + 1;
+      const heightMap: number[][] = [];
+
+      for (let y = 0; y < rows; y++) {
+        heightMap[y] = [];
+        for (let x = 0; x < cols; x++) {
+          const nx = x * cellSize * scale;
+          const ny = y * cellSize * scale;
+          
+          // Layer multiple octaves of noise for organic feel
+          let value = 0;
+          value += simplex.noise(nx + time * 0.02, ny + time * 0.015) * 1;
+          value += simplex.noise(nx * 2 + time * 0.01, ny * 2 - time * 0.01) * 0.5;
+          value += simplex.noise(nx * 4 - time * 0.005, ny * 4 + time * 0.008) * 0.25;
+          
+          heightMap[y][x] = value;
+        }
+      }
+
+      // Marching squares for contour lines
+      ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.35)';
+      ctx.lineWidth = 0.8;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      for (let level = 0; level < levels; level++) {
+        const threshold = -1.5 + (level / levels) * 3;
+        
+        ctx.beginPath();
+
+        for (let y = 0; y < rows - 1; y++) {
+          for (let x = 0; x < cols - 1; x++) {
+            const tl = heightMap[y][x];
+            const tr = heightMap[y][x + 1];
+            const br = heightMap[y + 1][x + 1];
+            const bl = heightMap[y + 1][x];
+
+            // Marching squares case
+            let caseIndex = 0;
+            if (tl > threshold) caseIndex |= 8;
+            if (tr > threshold) caseIndex |= 4;
+            if (br > threshold) caseIndex |= 2;
+            if (bl > threshold) caseIndex |= 1;
+
+            if (caseIndex === 0 || caseIndex === 15) continue;
+
+            const px = x * cellSize;
+            const py = y * cellSize;
+
+            // Interpolation function
+            const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+            const getT = (v1: number, v2: number) => {
+              if (Math.abs(v2 - v1) < 0.0001) return 0.5;
+              return (threshold - v1) / (v2 - v1);
+            };
+
+            // Edge midpoints with interpolation
+            const top = lerp(px, px + cellSize, getT(tl, tr));
+            const right = lerp(py, py + cellSize, getT(tr, br));
+            const bottom = lerp(px, px + cellSize, getT(bl, br));
+            const left = lerp(py, py + cellSize, getT(tl, bl));
+
+            // Draw line segments based on case
+            switch (caseIndex) {
+              case 1:
+              case 14:
+                ctx.moveTo(px, left);
+                ctx.lineTo(bottom, py + cellSize);
+                break;
+              case 2:
+              case 13:
+                ctx.moveTo(bottom, py + cellSize);
+                ctx.lineTo(px + cellSize, right);
+                break;
+              case 3:
+              case 12:
+                ctx.moveTo(px, left);
+                ctx.lineTo(px + cellSize, right);
+                break;
+              case 4:
+              case 11:
+                ctx.moveTo(top, py);
+                ctx.lineTo(px + cellSize, right);
+                break;
+              case 5:
+                ctx.moveTo(px, left);
+                ctx.lineTo(top, py);
+                ctx.moveTo(bottom, py + cellSize);
+                ctx.lineTo(px + cellSize, right);
+                break;
+              case 6:
+              case 9:
+                ctx.moveTo(top, py);
+                ctx.lineTo(bottom, py + cellSize);
+                break;
+              case 7:
+              case 8:
+                ctx.moveTo(px, left);
+                ctx.lineTo(top, py);
+                break;
+              case 10:
+                ctx.moveTo(top, py);
+                ctx.lineTo(px + cellSize, right);
+                ctx.moveTo(px, left);
+                ctx.lineTo(bottom, py + cellSize);
+                break;
+            }
+          }
+        }
+        
+        ctx.stroke();
+      }
+
+      time += 0.008;
+      animationId = requestAnimationFrame(drawContours);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    animate();
+    drawContours();
+
+    // Listen for theme changes
+    const observer = new MutationObserver(drawContours);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(animationId);
+      observer.disconnect();
     };
   }, []);
 
   return (
-    <div ref={containerRef} className="fixed inset-0 overflow-hidden bg-background">
-      {/* Layer 1 - Slowest, largest patterns */}
-      <svg
-        className="topo-layer absolute inset-0 w-full h-full animate-topo-drift-1"
-        viewBox="0 0 1000 1000"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <g className="stroke-contour opacity-20" fill="none" strokeWidth="1">
-          <path d="M-100,200 Q150,100 300,200 T600,180 T900,220 T1200,200" className="animate-flow-1" />
-          <path d="M-100,280 Q200,180 350,280 T650,260 T950,300 T1250,280" className="animate-flow-1" />
-          <path d="M-100,360 Q180,260 330,360 T630,340 T930,380 T1230,360" className="animate-flow-1" />
-          <path d="M-100,500 Q200,400 350,500 T650,480 T950,520 T1250,500" className="animate-flow-1" />
-          <path d="M-100,640 Q180,540 330,640 T630,620 T930,660 T1230,640" className="animate-flow-1" />
-          <path d="M-100,780 Q200,680 350,780 T650,760 T950,800 T1250,780" className="animate-flow-1" />
-        </g>
-      </svg>
-
-      {/* Layer 2 - Medium speed */}
-      <svg
-        className="topo-layer absolute inset-0 w-full h-full animate-topo-drift-2"
-        viewBox="0 0 1000 1000"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <g className="stroke-contour opacity-30" fill="none" strokeWidth="0.8">
-          <path d="M-50,150 C100,80 200,220 350,150 S500,80 650,150 S800,220 950,150 S1100,80 1200,150" className="animate-flow-2" />
-          <path d="M-50,250 C100,180 200,320 350,250 S500,180 650,250 S800,320 950,250 S1100,180 1200,250" className="animate-flow-2" />
-          <path d="M-50,350 C100,280 200,420 350,350 S500,280 650,350 S800,420 950,350 S1100,280 1200,350" className="animate-flow-2" />
-          <path d="M-50,450 C100,380 200,520 350,450 S500,380 650,450 S800,520 950,450 S1100,380 1200,450" className="animate-flow-2" />
-          <path d="M-50,550 C100,480 200,620 350,550 S500,480 650,550 S800,620 950,550 S1100,480 1200,550" className="animate-flow-2" />
-          <path d="M-50,650 C100,580 200,720 350,650 S500,580 650,650 S800,720 950,650 S1100,580 1200,650" className="animate-flow-2" />
-          <path d="M-50,750 C100,680 200,820 350,750 S500,680 650,750 S800,820 950,750 S1100,680 1200,750" className="animate-flow-2" />
-          <path d="M-50,850 C100,780 200,920 350,850 S500,780 650,850 S800,920 950,850 S1100,780 1200,850" className="animate-flow-2" />
-        </g>
-      </svg>
-
-      {/* Layer 3 - Organic contour shapes */}
-      <svg
-        className="topo-layer absolute inset-0 w-full h-full animate-topo-drift-3"
-        viewBox="0 0 1000 1000"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <g className="stroke-contour opacity-40" fill="none" strokeWidth="0.6">
-          {/* Organic blob contours */}
-          <path d="M300,300 Q350,250 400,280 Q450,310 420,360 Q390,410 340,390 Q290,370 280,320 Q270,270 300,300" className="animate-flow-3" />
-          <path d="M280,280 Q340,220 410,260 Q480,300 450,370 Q420,440 350,420 Q280,400 260,340 Q240,280 280,280" className="animate-flow-3" />
-          <path d="M260,260 Q330,190 420,240 Q510,290 480,380 Q450,470 360,450 Q270,430 240,360 Q210,290 260,260" className="animate-flow-3" />
-          
-          <path d="M650,500 Q700,450 750,480 Q800,510 770,560 Q740,610 690,590 Q640,570 630,520 Q620,470 650,500" className="animate-flow-3" />
-          <path d="M630,480 Q690,420 760,460 Q830,500 800,570 Q770,640 700,620 Q630,600 610,540 Q590,480 630,480" className="animate-flow-3" />
-          <path d="M610,460 Q680,390 770,440 Q860,490 830,580 Q800,670 710,650 Q620,630 590,560 Q560,490 610,460" className="animate-flow-3" />
-          
-          <path d="M150,700 Q200,650 250,680 Q300,710 270,760 Q240,810 190,790 Q140,770 130,720 Q120,670 150,700" className="animate-flow-3" />
-          <path d="M130,680 Q190,620 260,660 Q330,700 300,770 Q270,840 200,820 Q130,800 110,740 Q90,680 130,680" className="animate-flow-3" />
-          
-          <path d="M800,200 Q850,150 900,180 Q950,210 920,260 Q890,310 840,290 Q790,270 780,220 Q770,170 800,200" className="animate-flow-3" />
-          <path d="M780,180 Q840,120 910,160 Q980,200 950,270 Q920,340 850,320 Q780,300 760,240 Q740,180 780,180" className="animate-flow-3" />
-        </g>
-      </svg>
-
-      {/* Layer 4 - Fine detail lines */}
-      <svg
-        className="topo-layer absolute inset-0 w-full h-full animate-topo-drift-4"
-        viewBox="0 0 1000 1000"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <g className="stroke-contour opacity-50" fill="none" strokeWidth="0.5">
-          <path d="M0,100 Q250,50 500,100 T1000,100" className="animate-flow-4" />
-          <path d="M0,180 Q250,130 500,180 T1000,180" className="animate-flow-4" />
-          <path d="M0,260 Q250,210 500,260 T1000,260" className="animate-flow-4" />
-          <path d="M0,340 Q250,290 500,340 T1000,340" className="animate-flow-4" />
-          <path d="M0,420 Q250,370 500,420 T1000,420" className="animate-flow-4" />
-          <path d="M0,500 Q250,450 500,500 T1000,500" className="animate-flow-4" />
-          <path d="M0,580 Q250,530 500,580 T1000,580" className="animate-flow-4" />
-          <path d="M0,660 Q250,610 500,660 T1000,660" className="animate-flow-4" />
-          <path d="M0,740 Q250,690 500,740 T1000,740" className="animate-flow-4" />
-          <path d="M0,820 Q250,770 500,820 T1000,820" className="animate-flow-4" />
-          <path d="M0,900 Q250,850 500,900 T1000,900" className="animate-flow-4" />
-        </g>
-      </svg>
-
-      {/* Layer 5 - Fastest, closest detail */}
-      <svg
-        className="topo-layer absolute inset-0 w-full h-full animate-topo-drift-5"
-        viewBox="0 0 1000 1000"
-        preserveAspectRatio="xMidYMid slice"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <g className="stroke-contour opacity-60" fill="none" strokeWidth="0.4">
-          <ellipse cx="200" cy="400" rx="80" ry="60" className="animate-flow-5" />
-          <ellipse cx="200" cy="400" rx="120" ry="90" className="animate-flow-5" />
-          <ellipse cx="200" cy="400" rx="160" ry="120" className="animate-flow-5" />
-          
-          <ellipse cx="700" cy="300" rx="70" ry="50" className="animate-flow-5" />
-          <ellipse cx="700" cy="300" rx="110" ry="80" className="animate-flow-5" />
-          <ellipse cx="700" cy="300" rx="150" ry="110" className="animate-flow-5" />
-          
-          <ellipse cx="500" cy="700" rx="90" ry="70" className="animate-flow-5" />
-          <ellipse cx="500" cy="700" rx="130" ry="100" className="animate-flow-5" />
-          <ellipse cx="500" cy="700" rx="170" ry="130" className="animate-flow-5" />
-          
-          <ellipse cx="850" cy="650" rx="60" ry="45" className="animate-flow-5" />
-          <ellipse cx="850" cy="650" rx="100" ry="75" className="animate-flow-5" />
-          <ellipse cx="850" cy="650" rx="140" ry="105" className="animate-flow-5" />
-        </g>
-      </svg>
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 w-full h-full"
+      style={{ background: 'transparent' }}
+    />
   );
 };
 
