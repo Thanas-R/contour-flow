@@ -149,9 +149,9 @@ const TopographicBackground = () => {
       ctx.fillStyle = isDark ? '#070707' : '#fcfcfa';
       ctx.fillRect(0, 0, width, height);
 
-      const scale = 0.00077; // Larger scale = bigger, more flowing shapes
-      const levels = 5; // Fewer levels for cleaner look
-      const cellSize = 8; // Smaller cells for smoother curves
+      const scale = 0.00075; // Larger scale = bigger, more flowing shapes
+      const levels = 4; // Fewer levels for cleaner look
+      const cellSize = 7; // Smaller cells for smoother curves
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
