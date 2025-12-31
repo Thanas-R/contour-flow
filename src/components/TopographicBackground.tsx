@@ -151,7 +151,7 @@ const TopographicBackground = () => {
 
       const scale = 0.0006; // Larger scale = bigger, more flowing shapes
       const levels = 5; // Fewer levels for cleaner look
-      const cellSize = 8; // Smaller cells for smoother curves
+      const cellSize = 6; // Smaller cells for smoother curves
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
