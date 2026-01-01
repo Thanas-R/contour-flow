@@ -153,7 +153,7 @@ const TopographicBackground = () => {
       const isMobile = width < 768;
       const scale = isMobile ? 0.0011 : 0.0006; // Higher scale = more frequent noise = denser lines
       const levels = isMobile ? 8 : 6; // More contour levels on mobile
-      const cellSize = isMobile ? 4.5 : 8; // Finer sampling on mobile
+      const cellSize = isMobile ? 4 : 8; // Finer sampling on mobile
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
