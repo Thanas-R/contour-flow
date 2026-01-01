@@ -149,11 +149,11 @@ const TopographicBackground = () => {
       ctx.fillStyle = isDark ? '#070707' : '#fcfcfa';
       ctx.fillRect(0, 0, width, height);
 
-      // Responsive parameters - denser on mobile, same as before on desktop
+      // Responsive parameters - make mobile denser while keeping desktop unchanged
       const isMobile = width < 768;
-      const scale = isMobile ? 0.0004 : 0.0006; // Smaller scale = denser patterns on mobile
-      const levels = isMobile ? 8 : 6; // More contour levels on mobile
-      const cellSize = isMobile ? 5 : 8; // Smaller cells for finer detail on mobile
+      const scale = isMobile ? 0.0011 : 0.0006; // Higher scale = more frequent noise = denser lines
+      const levels = isMobile ? 12 : 6; // More contour levels on mobile
+      const cellSize = isMobile ? 4 : 8; // Finer sampling on mobile
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
