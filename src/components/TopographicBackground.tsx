@@ -1,7 +1,31 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+type DensityLevel = 'low' | 'medium' | 'high';
+
+const getDensityParams = (density: DensityLevel, isMobile: boolean) => {
+  const params = {
+    low: { scale: isMobile ? 0.0008 : 0.0004, levels: isMobile ? 5 : 4, cellSize: isMobile ? 10 : 12 },
+    medium: { scale: isMobile ? 0.0011 : 0.0006, levels: isMobile ? 8 : 6, cellSize: isMobile ? 6 : 8 },
+    high: { scale: isMobile ? 0.0015 : 0.0009, levels: isMobile ? 12 : 10, cellSize: isMobile ? 4 : 5 },
+  };
+  return params[density];
+};
 
 const TopographicBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [density, setDensity] = useState<DensityLevel>(() => {
+    const saved = localStorage.getItem('contour-density') as DensityLevel | null;
+    return saved && ['low', 'medium', 'high'].includes(saved) ? saved : 'medium';
+  });
+
+  // Listen for density changes from the toggle
+  useEffect(() => {
+    const handleDensityChange = (e: CustomEvent<DensityLevel>) => {
+      setDensity(e.detail);
+    };
+    window.addEventListener('density-change', handleDensityChange as EventListener);
+    return () => window.removeEventListener('density-change', handleDensityChange as EventListener);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -149,11 +173,9 @@ const TopographicBackground = () => {
       ctx.fillStyle = isDark ? '#070707' : '#fcfcfa';
       ctx.fillRect(0, 0, width, height);
 
-      // Responsive parameters - make mobile denser while keeping desktop unchanged
+      // Responsive parameters based on density setting
       const isMobile = width < 768;
-      const scale = isMobile ? 0.0011 : 0.0006; // Higher scale = more frequent noise = denser lines
-      const levels = isMobile ? 8 : 6; // More contour levels on mobile
-      const cellSize = isMobile ? 6 : 8; // Finer sampling on mobile
+      const { scale, levels, cellSize } = getDensityParams(density, isMobile);
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
@@ -343,7 +365,7 @@ const TopographicBackground = () => {
       cancelAnimationFrame(animationId);
       observer.disconnect();
     };
-  }, []);
+  }, [density]);
 
   return (
     <canvas
