@@ -13,25 +13,6 @@ const TopographicBackground = () => {
     let animationId: number;
     let time = 0;
 
-    // Mouse tracking with smooth interpolation
-    const mouse = { x: -1000, y: -1000 };
-    const smoothMouse = { x: -1000, y: -1000 };
-    const mouseRadius = 180; // Influence radius
-    const mouseStrength = 45; // Repulsion strength
-
-    const handleMouseMove = (e: MouseEvent) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-    };
-
-    const handleMouseLeave = () => {
-      mouse.x = -1000;
-      mouse.y = -1000;
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseleave', handleMouseLeave);
-
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
       canvas.width = window.innerWidth * dpr;
@@ -129,45 +110,22 @@ const TopographicBackground = () => {
 
     const simplex = new SimplexNoise(42);
 
-    // Apply mouse repulsion to a point with elastic easing
-    const applyMouseRepulsion = (point: { x: number; y: number }): { x: number; y: number } => {
-      const dx = point.x - smoothMouse.x;
-      const dy = point.y - smoothMouse.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      
-      if (dist < mouseRadius && dist > 0) {
-        // Smooth falloff using cosine for elastic feel
-        const factor = (1 - dist / mouseRadius);
-        const eased = factor * factor * (3 - 2 * factor); // Smoothstep
-        const push = eased * mouseStrength;
-        
-        return {
-          x: point.x + (dx / dist) * push,
-          y: point.y + (dy / dist) * push
-        };
-      }
-      return point;
-    };
-
     // Extra smooth curve using Catmull-Rom spline with higher tension for curvier lines
     const drawSmoothCurve = (points: { x: number; y: number }[], alpha: number) => {
       if (points.length < 3) return;
       
-      // Apply mouse repulsion to all points
-      const repelledPoints = points.map(applyMouseRepulsion);
-      
       ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.moveTo(repelledPoints[0].x, repelledPoints[0].y);
+      ctx.moveTo(points[0].x, points[0].y);
       
       // Higher tension for smoother, curvier lines like Lando site
       const tension = 0.5;
       
-      for (let i = 0; i < repelledPoints.length - 1; i++) {
-        const p0 = repelledPoints[Math.max(0, i - 1)];
-        const p1 = repelledPoints[i];
-        const p2 = repelledPoints[i + 1];
-        const p3 = repelledPoints[Math.min(repelledPoints.length - 1, i + 2)];
+      for (let i = 0; i < points.length - 1; i++) {
+        const p0 = points[Math.max(0, i - 1)];
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const p3 = points[Math.min(points.length - 1, i + 2)];
         
         const cp1x = p1.x + (p2.x - p0.x) * tension / 3;
         const cp1y = p1.y + (p2.y - p0.y) * tension / 3;
@@ -185,11 +143,6 @@ const TopographicBackground = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
       
-      // Smooth mouse interpolation for elastic feel (lerp towards actual mouse)
-      const lerpFactor = 0.12; // Lower = more delay/elasticity
-      smoothMouse.x += (mouse.x - smoothMouse.x) * lerpFactor;
-      smoothMouse.y += (mouse.y - smoothMouse.y) * lerpFactor;
-      
       const isDark = document.documentElement.classList.contains('dark');
       
       // Clear with background - exact colors from user
@@ -198,9 +151,9 @@ const TopographicBackground = () => {
 
       // Responsive parameters - make mobile denser while keeping desktop unchanged
       const isMobile = width < 768;
-      const scale = isMobile ? 0.0011 : 0.0006; // Higher scale = more frequent noise = denser lines
+      const scale = isMobile ? 0.002 : 0.0006; // Higher scale = more frequent noise = denser lines
       const levels = isMobile ? 8 : 6; // More contour levels on mobile
-      const cellSize = isMobile ? 4 : 8; // Finer sampling on mobile
+      const cellSize = isMobile ? 6 : 8; // Finer sampling on mobile
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
@@ -387,8 +340,6 @@ const TopographicBackground = () => {
 
     return () => {
       window.removeEventListener('resize', resize);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseleave', handleMouseLeave);
       cancelAnimationFrame(animationId);
       observer.disconnect();
     };
