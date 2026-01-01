@@ -2,8 +2,6 @@ import { useEffect, useRef } from 'react';
 
 const TopographicBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const parallaxOffset = useRef({ x: 0, y: 0 });
-  const targetOffset = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -14,61 +12,6 @@ const TopographicBackground = () => {
 
     let animationId: number;
     let time = 0;
-    
-    // Check if mobile
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    // Device orientation handler for mobile tilt parallax
-    const handleOrientation = (event: DeviceOrientationEvent) => {
-      if (event.gamma !== null && event.beta !== null) {
-        // gamma: left/right tilt (-90 to 90), beta: front/back tilt (-180 to 180)
-        const maxTilt = 25; // Max tilt angle to consider
-        const maxOffset = 30; // Max parallax offset in pixels
-        
-        const gamma = Math.max(-maxTilt, Math.min(maxTilt, event.gamma));
-        const beta = Math.max(-maxTilt, Math.min(maxTilt, event.beta - 45)); // Adjust for natural phone holding angle
-        
-        targetOffset.current = {
-          x: (gamma / maxTilt) * maxOffset,
-          y: (beta / maxTilt) * maxOffset
-        };
-      }
-    };
-    
-    // Scroll handler for scroll-based parallax
-    const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const maxScroll = document.body.scrollHeight - window.innerHeight;
-      const scrollProgress = maxScroll > 0 ? scrollY / maxScroll : 0;
-      
-      targetOffset.current = {
-        x: parallaxOffset.current.x,
-        y: scrollProgress * 40 // Subtle vertical parallax on scroll
-      };
-    };
-    
-    // Set up parallax listeners
-    if (isMobileDevice && window.DeviceOrientationEvent) {
-      // Request permission for iOS 13+
-      if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-        // Permission will be requested on first user interaction
-        const requestPermission = () => {
-          (DeviceOrientationEvent as any).requestPermission()
-            .then((response: string) => {
-              if (response === 'granted') {
-                window.addEventListener('deviceorientation', handleOrientation);
-              }
-            })
-            .catch(console.error);
-          document.removeEventListener('click', requestPermission);
-        };
-        document.addEventListener('click', requestPermission, { once: true });
-      } else {
-        window.addEventListener('deviceorientation', handleOrientation);
-      }
-    }
-    
-    window.addEventListener('scroll', handleScroll, { passive: true });
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
@@ -208,25 +151,17 @@ const TopographicBackground = () => {
 
       // Responsive parameters - make mobile denser while keeping desktop unchanged
       const isMobile = width < 768;
-      const scale = isMobile ? 0.002 : 0.0006; // Higher scale = more frequent noise = denser lines
+      const scale = isMobile ? 0.0011 : 0.0006; // Higher scale = more frequent noise = denser lines
       const levels = isMobile ? 8 : 6; // More contour levels on mobile
-      const cellSize = isMobile ? 6 : 8; // Finer sampling on mobile
+      const cellSize = isMobile ? 4 : 8; // Finer sampling on mobile
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
       const heightMap: number[][] = [];
 
-      // Smooth parallax interpolation (lerp towards target)
-      parallaxOffset.current.x += (targetOffset.current.x - parallaxOffset.current.x) * 0.05;
-      parallaxOffset.current.y += (targetOffset.current.y - parallaxOffset.current.y) * 0.05;
-      
-      // Apply parallax offset to noise sampling
-      const parallaxX = parallaxOffset.current.x * scale * 0.5;
-      const parallaxY = parallaxOffset.current.y * scale * 0.5;
-      
       // Slower, smoother flowing time offset (0.75x speed)
-      const flowX = time * 0.10 + parallaxX;
-      const flowY = time * 0.07 + parallaxY;
+      const flowX = time * 0.10;
+      const flowY = time * 0.07;
       
       // Gentle sine wave for organic breathing motion
       const breathe = Math.sin(time * 0.15) * 0.2;
@@ -405,8 +340,6 @@ const TopographicBackground = () => {
 
     return () => {
       window.removeEventListener('resize', resize);
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('deviceorientation', handleOrientation);
       cancelAnimationFrame(animationId);
       observer.disconnect();
     };
