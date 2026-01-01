@@ -149,9 +149,11 @@ const TopographicBackground = () => {
       ctx.fillStyle = isDark ? '#070707' : '#fcfcfa';
       ctx.fillRect(0, 0, width, height);
 
-      const scale = 0.0006; // Larger scale = bigger, more flowing shapes
-      const levels = 6; // Fewer levels for cleaner look
-      const cellSize = 8; // Smaller cells for smoother curves
+      // Responsive parameters - denser on mobile, same as before on desktop
+      const isMobile = width < 768;
+      const scale = isMobile ? 0.0004 : 0.0006; // Smaller scale = denser patterns on mobile
+      const levels = isMobile ? 8 : 6; // More contour levels on mobile
+      const cellSize = isMobile ? 5 : 8; // Smaller cells for finer detail on mobile
 
       const cols = Math.ceil(width / cellSize) + 1;
       const rows = Math.ceil(height / cellSize) + 1;
