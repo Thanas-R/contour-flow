@@ -145,8 +145,8 @@ const TopographicBackground = () => {
       
       const isDark = document.documentElement.classList.contains('dark');
       
-      // Clear with background - exact colors from user (#F5F5F5 for light)
-      ctx.fillStyle = isDark ? '#070707' : '#F5F5F5';
+      // Clear with background - softened dark mode uses a richer grey (#1f2937)
+      ctx.fillStyle = isDark ? '#1f2937' : '#F5F5F5';
       ctx.fillRect(0, 0, width, height);
 
       // Responsive parameters - make mobile denser while keeping desktop unchanged
@@ -198,7 +198,7 @@ const TopographicBackground = () => {
       }
 
       // Refined line style - like Lando Norris site
-      // For dark mode lines (previously rgba(255,255,255,0.20)) we use rgba(245,245,245,0.20)
+      // For dark mode lines we keep semi-light strokes that contrast nicely with the richer grey
       ctx.strokeStyle = isDark ? 'rgba(245, 245, 245, 0.20)' : 'rgba(180, 175, 165, 0.45)';
       ctx.lineWidth = 1.5;
       ctx.lineCap = 'round';
