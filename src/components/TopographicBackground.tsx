@@ -145,8 +145,8 @@ const TopographicBackground = () => {
       
       const isDark = document.documentElement.classList.contains('dark');
       
-      // Clear with background - softened dark mode uses a richer grey (#1f2937)
-      ctx.fillStyle = isDark ? '#1f2937' : '#F5F5F5';
+      // Clear with background - softened dark mode uses a richer grey (#1f2022)
+      ctx.fillStyle = isDark ? '#1f2022' : '#F5F5F5';
       ctx.fillRect(0, 0, width, height);
 
       // Responsive parameters - make mobile denser while keeping desktop unchanged
