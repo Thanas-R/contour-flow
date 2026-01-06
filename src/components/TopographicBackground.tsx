@@ -146,7 +146,7 @@ const TopographicBackground = () => {
       const isDark = document.documentElement.classList.contains('dark');
       
       // Clear with background - exact colors from user (#F5F5F5 for light)
-      ctx.fillStyle = isDark ? '#070707' : '#F5F5F5';
+      ctx.fillStyle = isDark ? '#191919' : '#F5F5F5';
       ctx.fillRect(0, 0, width, height);
 
       // Responsive parameters - make mobile denser while keeping desktop unchanged
