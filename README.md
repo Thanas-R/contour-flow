@@ -3,12 +3,6 @@
 ## Project info
 
 
-
-
-
-Changes made via Lovable will be committed automatically to this repo.
-
-
 Follow these steps:
 
 ```sh
