@@ -177,9 +177,11 @@ const TopographicBackground = ({ density: externalDensity }: TopographicBackgrou
       const rows = Math.ceil(height / cellSize) + 1;
       const heightMap: number[][] = [];
 
-      const flowX = time * 0.10;
-      const flowY = time * 0.07;
-      const breathe = Math.sin(time * 0.15) * 0.2;
+      // Smoother motion for higher densities
+      const speedMult = densityToUse === 'high' ? 0.4 : densityToUse === 'medium' ? 0.7 : 1.0;
+      const flowX = time * 0.10 * speedMult;
+      const flowY = time * 0.07 * speedMult;
+      const breathe = Math.sin(time * 0.15 * speedMult) * 0.2 * speedMult;
 
       for (let y = 0; y < rows; y++) {
         heightMap[y] = [];
