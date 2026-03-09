@@ -16,7 +16,7 @@ const Index = () => {
 
       {/* GitHub button */}
       <a
-        href="https://github.com/Thanas-R/contour-flow-test"
+        href="https://github.com/Thanas-R/contour-flow"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed top-6 left-6 z-50 rounded-full p-2.5 bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-background/90 transition-all duration-300 text-foreground"
