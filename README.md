@@ -5,7 +5,6 @@
 ![Vite](https://img.shields.io/badge/Vite-Build-646CFF?style=flat-square&logo=vite&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-Framework-000000?style=flat-square&logo=tailwindcss)
 ![Canvas](https://img.shields.io/badge/HTML5-Canvas-E34F26?style=flat-square&logo=html5&logoColor=white)
-![Status](https://img.shields.io/badge/Status-Experimental-444444?style=flat-square)
 
 Contour Flow is a procedural canvas animation used as a dynamic background for the website.  
 It generates flowing topographic-style contour lines in real time using mathematical algorithms rather than images or SVG graphics.
